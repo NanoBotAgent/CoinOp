@@ -130,8 +130,14 @@ public class DatabaseManager {
                             "price DOUBLE NOT NULL, " +
                             "total_value DOUBLE NOT NULL, " +
                             "timestamp BIGINT NOT NULL, " +
-                            "INDEX idx_commodity (commodity_id), " +
-                            "INDEX idx_timestamp (timestamp))");
+"timestamp BIGINT NOT NULL)");
+            if (dbType.equalsIgnoreCase("mysql")) {
+                stmt.executeUpdate("CREATE INDEX idx_trade_commodity ON " + TRADES_TABLE + " (commodity_id)");
+                stmt.executeUpdate("CREATE INDEX idx_trade_timestamp ON " + TRADES_TABLE + " (timestamp)");
+            } else {
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_trade_commodity ON " + TRADES_TABLE + " (commodity_id)");
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_trade_timestamp ON " + TRADES_TABLE + " (timestamp)");
+            }
 
             // Stats table - 24h volume and price tracking
             stmt.executeUpdate(
