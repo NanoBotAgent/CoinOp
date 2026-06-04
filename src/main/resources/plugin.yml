@@ -1,12 +1,13 @@
 name: CoinOp
-version: 1.0.0-SNAPSHOT
+version: 1.0.0
 main: com.coinop.CoinOpPlugin
-api-version: '1.20'
+api-version: '1.21'
 description: Dynamic order-book-based economy plugin for Minecraft servers
 author: APPLEPIE6969
 website: https://modrinth.com/user/APPLEPIE6969
 
-# Dependencies - Vault is a soft dependency to allow auto-installation
+# Dependencies
+# - Vault is a soft dependency to allow auto-installation
 softdepend:
   - Vault
   - EconomyShopGUI
