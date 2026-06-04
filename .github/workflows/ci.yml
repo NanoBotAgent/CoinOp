@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 env:
-  PAPER_VERSION: "1.21.1"
-  PAPER_BUILD: "4"
-  PAPER_JAR_SHA: "439a12a84b57f5660116cbfa29b9dd078b5c0013ad0f826938391e61dcb"
+  PAPER_VERSION: "1.21.11"
+  PAPER_BUILD: "69"
+  PAPER_JAR_SHA: "cf374f2af9d71dfcc75343f37b722a7abcb091c574131b95e3b13c6fc2cb8fae"
   VAULT_URL: "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
 
 jobs:
