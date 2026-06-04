@@ -25,13 +25,13 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+      - name: Build with Gradle
+        run: ./gradlew :v1_21_11:shadowJar --no-daemon --info
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: CoinOp
-          path: target/*.jar
+          path: versions/1.21.11/build/libs/*.jar
 
   smoke-test:
     runs-on: ubuntu-latest
@@ -78,8 +78,8 @@ jobs:
           fi
           SMOKE_FAIL=0
           if grep -q "CoinOp" logs/latest.log 2>/dev/null; then
-            if grep -qi "exception.*CoinOp\|error.*CoinOp" logs/latest.log 2>/dev/null; then
-              REAL_ERR=$(grep -i "exception.*CoinOp\|error.*CoinOp" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART" || true)
+            if grep -qi "exception.*CoinOp\\|error.*CoinOp" logs/latest.log 2>/dev/null; then
+              REAL_ERR=$(grep -i "exception.*CoinOp\\|error.*CoinOp" logs/latest.log | grep -vi "vault\\|registration attempt\\|PLEASE RESTART" || true)
               if [ -n "$REAL_ERR" ]; then
                 echo "FAIL: CoinOp exceptions during runtime"
                 echo "$REAL_ERR"
@@ -194,8 +194,8 @@ jobs:
           fi
           MYSQL_FAIL=0
           if grep -q "CoinOp" logs/latest.log 2>/dev/null; then
-            if grep -qi "exception.*CoinOp\|error.*CoinOp" logs/latest.log 2>/dev/null; then
-              REAL_ERR=$(grep -i "exception.*CoinOp\|error.*CoinOp" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART" || true)
+            if grep -qi "exception.*CoinOp\\|error.*CoinOp" logs/latest.log 2>/dev/null; then
+              REAL_ERR=$(grep -i "exception.*CoinOp\\|error.*CoinOp" logs/latest.log | grep -vi "vault\\|registration attempt\\|PLEASE RESTART" || true)
               if [ -n "$REAL_ERR" ]; then
                 echo "FAIL: CoinOp exceptions with MySQL"
                 echo "$REAL_ERR"
@@ -227,4 +227,4 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       - name: Build and check
-        run: mvn verify
+        run: ./gradlew :v1_21_11:check --no-daemon
