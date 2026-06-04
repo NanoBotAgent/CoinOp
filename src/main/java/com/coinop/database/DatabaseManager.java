@@ -115,9 +115,17 @@ public class DatabaseManager {
                             "created_at BIGINT NOT NULL, " +
                             "updated_at BIGINT NOT NULL, " +
                             "active BOOLEAN DEFAULT TRUE, " +
-                            "INDEX idx_player (player_uuid), " +
-                            "INDEX idx_commodity (commodity_id), " +
-                            "INDEX idx_active (active))");
+                "active BOOLEAN DEFAULT TRUE" +
+                ")");
+            if (dbType.equalsIgnoreCase("mysql")) {
+                stmt.executeUpdate("CREATE INDEX idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
+                stmt.executeUpdate("CREATE INDEX idx_order_commodity ON " + ORDERS_TABLE + " (commodity_id)");
+                stmt.executeUpdate("CREATE INDEX idx_order_active ON " + ORDERS_TABLE + " (active)");
+            } else {
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_commodity ON " + ORDERS_TABLE + " (commodity_id)");
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_active ON " + ORDERS_TABLE + " (active)");
+            }
 
             // Trades table - completed transactions
             stmt.executeUpdate(
