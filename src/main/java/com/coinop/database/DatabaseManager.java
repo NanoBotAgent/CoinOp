@@ -119,9 +119,17 @@ public class DatabaseManager {
                 ")");
             if (dbType.equalsIgnoreCase("mysql")) {
                 stmt.executeUpdate("CREATE INDEX idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
+"active BOOLEAN DEFAULT TRUE" +
+                ")");
+            if (dbType.equalsIgnoreCase("mysql")) {
+                stmt.executeUpdate("CREATE INDEX idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
                 stmt.executeUpdate("CREATE INDEX idx_order_commodity ON " + ORDERS_TABLE + " (commodity_id)");
                 stmt.executeUpdate("CREATE INDEX idx_order_active ON " + ORDERS_TABLE + " (active)");
             } else {
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_commodity ON " + ORDERS_TABLE + " (commodity_id)");
+                stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_active ON " + ORDERS_TABLE + " (active)");
+            }
                 stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_player ON " + ORDERS_TABLE + " (player_uuid)");
                 stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_commodity ON " + ORDERS_TABLE + " (commodity_id)");
                 stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_active ON " + ORDERS_TABLE + " (active)");
@@ -146,10 +154,14 @@ public class DatabaseManager {
                 stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_trade_commodity ON " + TRADES_TABLE + " (commodity_id)");
                 stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_trade_timestamp ON " + TRADES_TABLE + " (timestamp)");
             }
-
-            // Stats table - 24h volume and price tracking
-            stmt.executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + STATS_TABLE + " (" +
+String sql = dbType.equalsIgnoreCase("mysql")
+                ? "INSERT INTO " + ORDERS_TABLE + " (order_id, player_uuid, commodity_id, order_type, price_per_unit, " + ""
+                  "amount, filled_amount, created_at, updated_at, active) " + ""
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " + ""
+                  "ON DUPLICATE KEY UPDATE filled_amount = VALUES(filled_amount), updated_at = VALUES(updated_at), active = VALUES(active)"
+                : "INSERT OR REPLACE INTO " + ORDERS_TABLE + " (order_id, player_uuid, commodity_id, order_type, price_per_unit, " + ""
+                  "amount, filled_amount, created_at, updated_at, active) " + ""
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                             "commodity_id VARCHAR(64) PRIMARY KEY, " +
                             "volume_24h BIGINT DEFAULT 0, " +
                             "value_24h DOUBLE DEFAULT 0, " +
