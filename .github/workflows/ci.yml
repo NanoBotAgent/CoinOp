@@ -25,6 +25,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Build with Gradle
         run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
       - name: Upload build log
@@ -52,6 +54,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Build with Gradle
         run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
       - name: Prepare plugin
@@ -129,6 +133,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Build with Gradle
         run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
       - name: Prepare plugin
