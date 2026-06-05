@@ -68,9 +68,6 @@ shadowJar {
  relocate 'org.sqlite', 'com.coinop.lib.sqlite'
  relocate 'com.google.gson', 'com.coinop.lib.gson'
 
- // Prevent minimize from stripping JDBC drivers loaded via reflection
- minimize {
-  exclude(dependency('org.xerial:sqlite-jdbc:.*'))
-  exclude(dependency('com.mysql:mysql-connector-j:.*'))
- }
+ // Do NOT minimize - strips SQLite JDBC native .so libraries
+ // minimize()
 }
