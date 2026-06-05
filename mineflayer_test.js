@@ -281,7 +281,7 @@ async function testOrdersCommands() {
   );
 
   // /coinorders cancel non-numeric
-  msgs = await runCommand('coinorders cancel abc', 4000);
+  msgs = await runCommand('coinorders cancel DIAMOND abc', 4000);
   const cancelNan = concat(msgs);
   check(
     cancelNan.toLowerCase().includes('number') ||
@@ -292,7 +292,7 @@ async function testOrdersCommands() {
   );
 
   // /coinorders cancel nonexistent
-  msgs = await runCommand('coinorders cancel 99999', 4000);
+  msgs = await runCommand('coinorders cancel DIAMOND 99999', 4000);
   checkContains(concat(msgs), 'not found', '/coinorders cancel nonexistent ID shows not found');
 }
 
