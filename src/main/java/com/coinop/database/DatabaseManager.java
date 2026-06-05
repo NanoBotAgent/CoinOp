@@ -36,6 +36,15 @@ public class DatabaseManager {
  HikariConfig hikariConfig = new HikariConfig();
  String dbType = config.getDatabaseType();
 
+ // Force-load SQLite JDBC driver class so native libs are available
+ if (!dbType.equalsIgnoreCase("mysql")) {
+  try {
+   Class.forName("org.sqlite.JDBC");
+  } catch (ClassNotFoundException cnfe) {
+   plugin.getLogger().warning("SQLite JDBC driver class not found: " + cnfe.getMessage());
+  }
+ }
+
  if (dbType.equalsIgnoreCase("mysql")) {
  String url = String.format("jdbc:mysql://%s:%d/%s",
  config.getDatabaseHost(),
