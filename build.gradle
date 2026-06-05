@@ -61,11 +61,12 @@ subprojects {
  relocate 'com.zaxxer.hikari', 'com.coinop.lib.hikari'
  archiveClassifier.set('')
 
- // Prevent minimize from stripping JDBC drivers loaded via reflection
- minimize {
-  exclude(dependency('org.xerial:sqlite-jdbc:.*'))
-  exclude(dependency('com.mysql:mysql-connector-j:.*'))
- }
+  // Do NOT minimize - strips SQLite JDBC native .so libraries
+  // Do NOT minimize - strips SQLite JDBC native .so libraries
+  // minimize() {
+  //   exclude(dependency('org.xerial:sqlite-jdbc:.*'))
+  //   exclude(dependency('com.mysql:mysql-connector-j:.*'))
+  // }
  }
 
  tasks.jar {
