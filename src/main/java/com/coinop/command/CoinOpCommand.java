@@ -187,7 +187,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Invalid amount");
+            player.sendMessage(ChatColor.RED + "Invalid amount. Must be a positive number.");
             return true;
         }
 
@@ -251,7 +251,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Invalid amount");
+            player.sendMessage(ChatColor.RED + "Invalid amount. Must be a positive number.");
             return true;
         }
 
@@ -324,7 +324,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Invalid amount");
+            player.sendMessage(ChatColor.RED + "Invalid amount. Must be a positive number.");
             return true;
         }
 
@@ -396,7 +396,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
             try {
                 orderId = Long.parseLong(args[3]);
             } catch (NumberFormatException e) {
-                player.sendMessage(ChatColor.RED + "Invalid order ID.");
+                player.sendMessage(ChatColor.RED + "Invalid order ID. Must be a number.");
                 return true;
             }
 
@@ -421,7 +421,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
             if (api.cancelOrder(commodity, orderId)) {
                 player.sendMessage(ChatColor.GREEN + "Order cancelled.");
             } else {
-                player.sendMessage(ChatColor.RED + "Failed to cancel.");
+                player.sendMessage(ChatColor.RED + "Order not found.");
             }
             return true;
         }
