@@ -62,11 +62,6 @@ subprojects {
  archiveClassifier.set('')
 
   // Do NOT minimize - strips SQLite JDBC native .so libraries
-  // Do NOT minimize - strips SQLite JDBC native .so libraries
-  // minimize() {
-  //   exclude(dependency('org.xerial:sqlite-jdbc:.*'))
-  //   exclude(dependency('com.mysql:mysql-connector-j:.*'))
-  // }
  }
 
  tasks.jar {
