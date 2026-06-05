@@ -69,5 +69,3 @@ shadowJar {
  relocate 'com.google.gson', 'com.coinop.lib.gson'
 
  // Do NOT minimize - strips SQLite JDBC native .so libraries
- // minimize()
-}
