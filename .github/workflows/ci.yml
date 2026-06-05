@@ -182,7 +182,7 @@ jobs:
          kill $SERVER_PID 2>/dev/null || true
          exit 1
        fi
-       ERR=$(grep -i "exception.*CoinOp\|error.*CoinOp" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART" || true)
+       ERR=$(grep -iE "exception|severe" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART\|Loading libraries\|com.destroystokyo" || true)
        if [ -n "$ERR" ]; then
          echo "FAIL: $ERR"
          kill $SERVER_PID 2>/dev/null || true
