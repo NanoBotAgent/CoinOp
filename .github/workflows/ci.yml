@@ -1,214 +1,213 @@
 name: Build and Test
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+ push:
+   branches: ["main"]
+ pull_request:
+   branches: ["main"]
 
 permissions:
-  contents: read
+ contents: read
 
 env:
-  PAPER_VERSION: "1.21.11"
-  PAPER_BUILD: "69"
-  PAPER_JAR_SHA: "cf374f2af9d71dfcc75343f37b722a7abcb091c574131b95e3b13c6fc2cb8fae"
-  VAULT_URL: "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
+ PAPER_VERSION: "1.21.11"
+ PAPER_BUILD: "69"
+ PAPER_JAR_SHA: "cf374f2af9d71dfcc75343f37b722a7abcb091c574131b95e3b13c6fc2cb8fae"
+ VAULT_URL: "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Build with Gradle
-        run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
-      - name: Upload build log
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-build-log
-          path: gradle-build.log
-          retention-days: 7
-          if: always()
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: CoinOp
-          path: versions/1.21.11/build/libs/*.jar
-          if: always()
+ build:
+   runs-on: ubuntu-latest
+   steps:
+   - uses: actions/checkout@v4
+   - name: Set up JDK 21
+     uses: actions/setup-java@v4
+     with:
+       java-version: '21'
+       distribution: 'temurin'
+   - name: Make gradlew executable
+     run: chmod +x ./gradlew
+   - name: Build with Gradle
+     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
+   - name: Upload build log
+     uses: actions/upload-artifact@v4
+     with:
+       name: gradle-build-log
+       path: gradle-build.log
+       retention-days: 7
+     if: always()
+   - name: Upload JAR
+     uses: actions/upload-artifact@v4
+     with:
+       name: CoinOp
+       path: versions/1.21.11/build/libs/*.jar
+     if: always()
 
-  smoke-test:
-    runs-on: ubuntu-latest
-    needs: build
-    if: always() && needs.build.result == 'success'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Build with Gradle
-        run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
-      - name: Prepare plugin
-        run: |
-          mkdir -p plugins
-          cp versions/1.21.11/build/libs/*.jar plugins/
-          ls -lh plugins/
-      - name: Download Vault (softdep)
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Download Paper
-        run: |
-          PAPER_URL="https://fill-data.papermc.io/v1/objects/${{ env.PAPER_JAR_SHA }}/paper-${{ env.PAPER_VERSION }}-${{ env.PAPER_BUILD }}.jar"
-          curl -sL "$PAPER_URL" -o paper.jar
-          if [ ! -s paper.jar ]; then
-            echo "SKIP: missing server JAR under configured SHA"
-            exit 0
-          fi
-      - name: Start Paper server
-        run: |
-          echo "eula=true" > eula.txt
-          echo "online-mode=false" > server.properties
-          echo "enable-rcon=true" >> server.properties
-          echo "rcon.port=25575" >> server.properties
-          echo "rcon.password=test" >> server.properties
-          timeout 120 java -jar paper.jar --nogui &
-          SERVER_PID=$!
-          for i in $(seq 1 60); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: server failed to start"
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-          SMOKE_FAIL=0
-          grep -qi "CoinOp" logs/latest.log || SMOKE_FAIL=1
-          [ -d "plugins/CoinOp" ] || SMOKE_FAIL=1
-          [ -f "plugins/CoinOp/config.yml" ] || SMOKE_FAIL=1
-          kill $SERVER_PID 2>/dev/null || true
-          wait $SERVER_PID 2>/dev/null || true
-          [ "$SMOKE_FAIL" -eq 0 ]
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-test-log
-          path: logs/latest.log
-          retention-days: 7
+ smoke-test:
+   runs-on: ubuntu-latest
+   needs: build
+   if: always() && needs.build.result == 'success'
+   steps:
+   - uses: actions/checkout@v4
+   - name: Set up JDK 21
+     uses: actions/setup-java@v4
+     with:
+       java-version: '21'
+       distribution: 'temurin'
+   - name: Make gradlew executable
+     run: chmod +x ./gradlew
+   - name: Build with Gradle
+     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+   - name: Prepare plugin
+     run: |
+       mkdir -p plugins
+       cp versions/1.21.11/build/libs/*.jar plugins/
+       ls -lh plugins/
+   - name: Download Vault (softdep)
+     run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
+   - name: Download Paper
+     run: |
+       PAPER_URL="https://fill-data.papermc.io/v1/objects/${{ env.PAPER_JAR_SHA }}/paper-${{ env.PAPER_VERSION }}-${{ env.PAPER_BUILD }}.jar"
+       curl -sL "$PAPER_URL" -o paper.jar
+       if [ ! -s paper.jar ]; then
+         echo "SKIP: missing server JAR under configured SHA"
+         exit 0
+       fi
+   - name: Start Paper server
+     run: |
+       echo "eula=true" > eula.txt
+       echo "online-mode=false" > server.properties
+       echo "enable-rcon=true" >> server.properties
+       echo "rcon.port=25575" >> server.properties
+       echo "rcon.password=test" >> server.properties
+       timeout 120 java -jar paper.jar --nogui &
+       SERVER_PID=$!
+       for i in $(seq 1 60); do
+         if grep -q "Done (" logs/latest.log 2>/dev/null; then
+           echo "Server started!"
+           break
+         fi
+         sleep 2
+       done
+       if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
+         echo "FAIL: server failed to start"
+         kill $SERVER_PID 2>/dev/null || true
+         exit 1
+       fi
+       SMOKE_FAIL=0
+       grep -qi "CoinOp" logs/latest.log || SMOKE_FAIL=1
+       [ -d "plugins/CoinOp" ] || SMOKE_FAIL=1
+       [ -f "plugins/CoinOp/config.yml" ] || SMOKE_FAIL=1
+       kill $SERVER_PID 2>/dev/null || true
+       wait $SERVER_PID 2>/dev/null || true
+       [ "$SMOKE_FAIL" -eq 0 ]
+   - name: Upload server log on failure
+     if: failure()
+     uses: actions/upload-artifact@v4
+     with:
+       name: smoke-test-log
+       path: logs/latest.log
+       retention-days: 7
 
-  mysql-test:
-    runs-on: ubuntu-latest
-    needs: build
-    if: always() && needs.build.result == 'success'
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: test
-          MYSQL_DATABASE: coinop_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Build with Gradle
-        run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
-      - name: Prepare plugin
-        run: |
-          mkdir -p plugins
-          cp versions/1.21.11/build/libs/*.jar plugins/
-      - name: Download Vault
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Download Paper
-        run: |
-          PAPER_URL="https://fill-data.papermc.io/v1/objects/${{ env.PAPER_JAR_SHA }}/paper-${{ env.PAPER_VERSION }}-${{ env.PAPER_BUILD }}.jar"
-          curl -sL "$PAPER_URL" -o paper.jar
-          if [ ! -s paper.jar ]; then
-            echo "SKIP: missing Paper server JAR"
-            exit 0
-          fi
-      - name: Start server with MySQL enabled
-        run: |
-          mkdir -p plugins/CoinOp
-          cat > plugins/CoinOp/config.yml << 'CFG'
-          economy:
-            type: mysql
-            mysql:
-              host: 127.0.0.1
-              port: 3306
-              database: coinop_test
-              username: root
-              password: test
-          CFG
-          echo "eula=true" > eula.txt
-          echo "online-mode=false" >> server.properties
-          echo "enable-rcon=true" >> server.properties
-          echo "rcon.port=25575" >> server.properties
-          echo "rcon.password=test" >> server.properties
-          timeout 120 java -jar paper.jar --nogui &
-          SERVER_PID=$!
-          for i in $(seq 1 60); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started with MySQL!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: server failed"
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-          ERR=$(grep -i "exception.*CoinOp\|error.*CoinOp" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART" || true)
-          if [ -n "$ERR" ]; then
-            echo "FAIL: $ERR"
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-          kill $SERVER_PID 2>/dev/null || true
-          wait $SERVER_PID 2>/dev/null || true
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mysql-test-log
-          path: logs/latest.log
-          retention-days: 7
+ mysql-test:
+   runs-on: ubuntu-latest
+   needs: build
+   if: always() && needs.build.result == 'success'
+   services:
+     mysql:
+       image: mysql:8.0
+       env:
+         MYSQL_ROOT_PASSWORD: test
+         MYSQL_DATABASE: coinop_test
+       ports:
+       - 3306:3306
+       options: >-
+         --health-cmd="mysqladmin ping -h 127.0.0.1"
+         --health-interval=10s
+         --health-timeout=5s
+         --health-retries=5
+   steps:
+   - uses: actions/checkout@v4
+   - name: Set up JDK 21
+     uses: actions/setup-java@v4
+     with:
+       java-version: '21'
+       distribution: 'temurin'
+   - name: Make gradlew executable
+     run: chmod +x ./gradlew
+   - name: Build with Gradle
+     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+   - name: Prepare plugin
+     run: |
+       mkdir -p plugins
+       cp versions/1.21.11/build/libs/*.jar plugins/
+   - name: Download Vault
+     run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
+   - name: Download Paper
+     run: |
+       PAPER_URL="https://fill-data.papermc.io/v1/objects/${{ env.PAPER_JAR_SHA }}/paper-${{ env.PAPER_VERSION }}-${{ env.PAPER_BUILD }}.jar"
+       curl -sL "$PAPER_URL" -o paper.jar
+       if [ ! -s paper.jar ]; then
+         echo "SKIP: missing Paper server JAR"
+         exit 0
+       fi
+   - name: Start server with MySQL enabled
+     run: |
+       mkdir -p plugins/CoinOp
+       cat > plugins/CoinOp/config.yml << 'CFG'
+       database:
+         type: mysql
+         host: 127.0.0.1
+         port: 3306
+         database: coinop_test
+         username: root
+         password: test
+       CFG
+       echo "eula=true" > eula.txt
+       echo "online-mode=false" >> server.properties
+       echo "enable-rcon=true" >> server.properties
+       echo "rcon.port=25575" >> server.properties
+       echo "rcon.password=test" >> server.properties
+       timeout 120 java -jar paper.jar --nogui &
+       SERVER_PID=$!
+       for i in $(seq 1 60); do
+         if grep -q "Done (" logs/latest.log 2>/dev/null; then
+           echo "Server started with MySQL!"
+           break
+         fi
+         sleep 2
+       done
+       if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
+         echo "FAIL: server failed"
+         kill $SERVER_PID 2>/dev/null || true
+         exit 1
+       fi
+       ERR=$(grep -i "exception.*CoinOp\|error.*CoinOp" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART" || true)
+       if [ -n "$ERR" ]; then
+         echo "FAIL: $ERR"
+         kill $SERVER_PID 2>/dev/null || true
+         exit 1
+       fi
+       kill $SERVER_PID 2>/dev/null || true
+       wait $SERVER_PID 2>/dev/null || true
+   - name: Upload server log on failure
+     if: failure()
+     uses: actions/upload-artifact@v4
+     with:
+       name: mysql-test-log
+       path: logs/latest.log
+       retention-days: 7
 
-  code-quality:
-    runs-on: ubuntu-latest
-    needs: build
-    if: always() && needs.build.result == 'success'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Verify build (shadowJar)
-        run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+ code-quality:
+   runs-on: ubuntu-latest
+   needs: build
+   if: always() && needs.build.result == 'success'
+   steps:
+   - uses: actions/checkout@v4
+   - name: Set up JDK 21
+     uses: actions/setup-java@v4
+     with:
+       java-version: '21'
+       distribution: 'temurin'
+   - name: Verify build (shadowJar)
+     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
