@@ -155,12 +155,13 @@ jobs:
      run: |
        mkdir -p plugins/CoinOp
        cat > plugins/CoinOp/config.yml << 'CFG'
-       database.type: mysql
-       database.host: 127.0.0.1
-       database.port: 3306
-       database.name: coinop_test
-       database.user: root
-       database.password: test
+       database:
+         type: mysql
+         host: 127.0.0.1
+         port: 3306
+         name: coinop_test
+         user: root
+         password: test
        CFG
        echo "eula=true" > eula.txt
        echo "online-mode=false" >> server.properties
