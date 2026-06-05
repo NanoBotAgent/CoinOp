@@ -288,7 +288,6 @@ public class DatabaseManager {
  UUID.fromString(rs.getString("seller_uuid")),
  rs.getLong("amount"),
  rs.getDouble("price"),
- rs.getDouble("total_value"),
  rs.getLong("timestamp"));
  trades.add(trade);
  }
