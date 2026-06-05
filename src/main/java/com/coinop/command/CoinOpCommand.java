@@ -187,7 +187,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Amount must be 1-" + Integer.MAX_VALUE);
+            player.sendMessage(ChatColor.RED + "Invalid amount");
             return true;
         }
 
@@ -251,7 +251,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Amount must be 1-" + Integer.MAX_VALUE);
+            player.sendMessage(ChatColor.RED + "Invalid amount");
             return true;
         }
 
@@ -324,7 +324,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
         }
 
         if (amount <= 0 || amount > Integer.MAX_VALUE) {
-            player.sendMessage(ChatColor.RED + "Amount must be 1-" + Integer.MAX_VALUE);
+            player.sendMessage(ChatColor.RED + "Invalid amount");
             return true;
         }
 
