@@ -67,13 +67,18 @@ public class CoinOpPlugin extends JavaPlugin {
             getLogger().warning("Running without economy features.");
         }
 
-        // Database
-        databaseManager = new DatabaseManager(this, config);
-        if (databaseManager.initialize()) {
-            getLogger().info("Database initialized.");
-        } else {
-            getLogger().warning("Database failed. Running without persistence.");
-        }
+		// Database
+		databaseManager = new DatabaseManager(this, config);
+		try {
+			if (databaseManager.initialize()) {
+				getLogger().info("Database initialized.");
+			} else {
+				getLogger().warning("Database failed. Running without persistence.");
+			}
+		} catch (Throwable t) {
+			getLogger().warning("Database init error (non-fatal): " + t.getMessage());
+			getLogger().warning("Running without persistence.");
+		}
 
         // Market manager
         CoinOpManager = new CoinOpManager(this, economyManager, config, databaseManager);
