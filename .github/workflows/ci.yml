@@ -28,7 +28,7 @@ jobs:
    - name: Make gradlew executable
      run: chmod +x ./gradlew
    - name: Build with Gradle
-     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
+     run: ./gradlew shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
    - name: Upload build log
      uses: actions/upload-artifact@v4
      with:
@@ -40,7 +40,7 @@ jobs:
      uses: actions/upload-artifact@v4
      with:
        name: CoinOp
-       path: versions/1.21.11/build/libs/*.jar
+       path: versions/*/build/libs/*.jar
      if: always()
 
  smoke-test:
@@ -57,11 +57,11 @@ jobs:
    - name: Make gradlew executable
      run: chmod +x ./gradlew
    - name: Build with Gradle
-     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+     run: ./gradlew shadowJar --no-daemon --stacktrace
    - name: Prepare plugin
      run: |
        mkdir -p plugins
-       cp versions/1.21.11/build/libs/*.jar plugins/
+       cp versions/*/build/libs/*.jar plugins/
        ls -lh plugins/
    - name: Download Vault (softdep)
      run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
@@ -136,11 +136,11 @@ jobs:
    - name: Make gradlew executable
      run: chmod +x ./gradlew
    - name: Build with Gradle
-     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+     run: ./gradlew shadowJar --no-daemon --stacktrace
    - name: Prepare plugin
      run: |
        mkdir -p plugins
-       cp versions/1.21.11/build/libs/*.jar plugins/
+       cp versions/*/build/libs/*.jar plugins/
    - name: Download Vault
      run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
    - name: Download Paper
@@ -210,4 +210,4 @@ jobs:
        java-version: '21'
        distribution: 'temurin'
    - name: Verify build (shadowJar)
-     run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+     run: ./gradlew shadowJar --no-daemon --stacktrace
