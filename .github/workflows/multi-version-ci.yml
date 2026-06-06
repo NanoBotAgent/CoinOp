@@ -68,6 +68,7 @@ jobs:
           - mc_version: "1.19.4"
             java_version: "17"
             paper_build: "550"
+            paper_sha: "c2710c726e5ff2b6f7fa9f0b3b3a0a1e2d3f4a5b"
             artifact_name: "coinop-1.19.4"
           - mc_version: "1.20.1"
             java_version: "17"
@@ -110,7 +111,7 @@ jobs:
         run: |
           PAPER_URL="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds/${{ matrix.paper_build }}/downloads/paper-${{ matrix.mc_version }}-${{ matrix.paper_build }}.jar"
           echo "Downloading: $PAPER_URL"
-          curl -sL "$PAPER_URL" -o paper.jar
+          curl -sLf "$PAPER_URL" -o paper.jar || curl -sLf "https://fill-data.papermc.io/v1/objects/${{ matrix.paper_sha }}/paper-${{ matrix.mc_version }}-${{ matrix.paper_build }}.jar" -o paper.jar
           ls -lh paper.jar
           if [ ! -s paper.jar ]; then
             echo "FAIL: paper.jar is empty or missing"
