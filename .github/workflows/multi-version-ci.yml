@@ -11,8 +11,6 @@ permissions:
 
 env:
   VAULT_URL: "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
-  VIAVERSION_URL: "https://cdn.modrinth.com/data/P1OZGk5p/versions/6LC4R0sP/ViaVersion-5.9.2-SNAPSHOT.jar"
-  VIABACKWARDS_URL: "https://cdn.modrinth.com/data/NpvuJQoq/versions/Og77hOkC/ViaBackwards-5.9.2-SNAPSHOT.jar"
 
 jobs:
   build:
@@ -53,36 +51,71 @@ jobs:
         with:
           name: coinop-1.21
           path: versions/1.21/build/libs/*.jar
+      - name: Upload 1.21.11 JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinop-1.21.11
+          path: versions/1.21.11/build/libs/*.jar
 
-  test-1-19-4:
+  version-test:
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mc_version: "1.19.4"
+            java_version: "17"
+            paper_build: "550"
+            artifact_name: "coinop-1.19.4"
+          - mc_version: "1.20.1"
+            java_version: "17"
+            paper_build: "196"
+            artifact_name: "coinop-1.20.1"
+          - mc_version: "1.20.4"
+            java_version: "17"
+            paper_build: "421"
+            artifact_name: "coinop-1.20.4"
+          - mc_version: "1.20.6"
+            java_version: "21"
+            paper_build: "324"
+            artifact_name: "coinop-1.20.6"
+          - mc_version: "1.21"
+            java_version: "21"
+            paper_build: "142"
+            artifact_name: "coinop-1.21"
+          - mc_version: "1.21.1"
+            java_version: "21"
+            paper_build: "120"
+            artifact_name: "coinop-1.21.11"
+    name: "Test MC ${{ matrix.mc_version }}"
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '${{ matrix.java_version }}'
           distribution: 'temurin'
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Download CoinOp 1.19.4
+      - name: Download CoinOp JAR
         uses: actions/download-artifact@v4
         with:
-          name: coinop-1.19.4
+          name: ${{ matrix.artifact_name }}
           path: plugins
-      - name: Download Paper 1.19.4
+      - name: Download Paper ${{ matrix.mc_version }}
         run: |
-          curl -sL "https://api.papermc.io/v2/projects/paper/versions/1.19.4/builds/550/downloads/paper-1.19.4-550.jar" -o paper.jar
+          PAPER_URL="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds/${{ matrix.paper_build }}/downloads/paper-${{ matrix.mc_version }}-${{ matrix.paper_build }}.jar"
+          echo "Downloading: $PAPER_URL"
+          curl -sL "$PAPER_URL" -o paper.jar
+          ls -lh paper.jar
           if [ ! -s paper.jar ]; then
-            echo "Paper 1.19.4 download failed, trying alternate URL..."
-            curl -sL "https://fill-data.papermc.io/v1/objects/1e674a1a9357a1e4f8e3f5a6c7d8e9f0a1b2c3d4/paper-1.19.4-550.jar" -o paper.jar
+            echo "FAIL: paper.jar is empty or missing"
+            exit 1
           fi
-          ls -lh paper.jar
-          if [ ! -s paper.jar ]; then echo "FAIL: paper.jar empty"; exit 1; fi
       - name: Download Vault
         run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
       - name: Configure and start server
@@ -117,7 +150,7 @@ jobs:
       - name: Op bot via RCON
         run: |
           sleep 3
-          python3 -c "
+          python3 << 'RCON'
           import socket, struct
           def rcon_read_packet(sock):
               try:
@@ -170,326 +203,14 @@ jobs:
           else:
               print('WARNING: RCON login failed')
           sock.close()
-          "
-      - name: Install mineflayer and run tests
-        run: |
-          MC_VERSION="1.19.4" node -e "
-          const fs = require('fs');
-          let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, \"const MC_VERSION = '1.19.4';\");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper 1.19.4 (native)');
-          fs.writeFileSync('mineflayer_test_patched.js', test);
-          "
-          npm install mineflayer
-          node mineflayer_test_patched.js 2>&1 | tee mineflayer-output.log
-          TEST_EXIT=${PIPESTATUS[0]}
-          echo "Mineflayer test exit code: $TEST_EXIT"
-          exit $TEST_EXIT
-      - name: Upload test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mineflayer-output-1.19.4
-          path: mineflayer-output.log
-          retention-days: 7
-      - name: Dump server exceptions
-        if: always()
-        run: |
-          if [ -f logs/latest.log ]; then
-            echo "=== Server exceptions ==="
-            grep -iE "exception|error.*coinop|severe" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART\|io_uring\|Loading libraries\|com.destroystokyo" | head -30 || echo "No relevant exceptions found"
-          fi
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -n "$SERVER_PID" ]; then
-            kill $SERVER_PID 2>/dev/null || true
-            wait $SERVER_PID 2>/dev/null || true
-          fi
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-log-1.19.4
-          path: logs/latest.log
-          retention-days: 7
-
-  test-1-20-1:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Download CoinOp 1.20.1
-        uses: actions/download-artifact@v4
-        with:
-          name: coinop-1.20.1
-          path: plugins
-      - name: Download Paper 1.20.1
-        run: |
-          curl -sL "https://api.papermc.io/v2/projects/paper/versions/1.20.1/builds/196/downloads/paper-1.20.1-196.jar" -o paper.jar
-          ls -lh paper.jar
-          if [ ! -s paper.jar ]; then echo "FAIL: paper.jar empty"; exit 1; fi
-      - name: Download Vault
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Configure and start server
-        run: |
-          echo "eula=true" > eula.txt
-          cat > server.properties << 'PROPS'
-          online-mode=false
-          server-port=25565
-          max-players=10
-          gamemode=survival
-          difficulty=peaceful
-          enable-rcon=true
-          rcon.port=25575
-          rcon.password=test
-          PROPS
-          java -Xmx2G -jar paper.jar --nogui &
-          SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          for i in $(seq 1 120); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started successfully!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: Server did not start within 4 minutes"
-            cat logs/latest.log 2>/dev/null | tail -50 || true
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-      - name: Op bot via RCON
-        run: |
-          sleep 3
-          python3 -c "
-          import socket, struct
-          def rcon_read_packet(sock):
-              try:
-                  raw = b''
-                  while len(raw) < 4:
-                      chunk = sock.recv(4 - len(raw))
-                      if not chunk: return None
-                      raw += chunk
-                  length = struct.unpack('<i', raw[:4])[0]
-                  if length < 8 or length > 4096: return None
-                  body_data = b''
-                  remaining = length
-                  while remaining > 0:
-                      chunk = sock.recv(min(remaining, 4096))
-                      if not chunk: return None
-                      body_data += chunk
-                      remaining -= len(chunk)
-                  if len(body_data) < 8: return None
-                  req_id = struct.unpack('<i', body_data[:4])[0]
-                  pkt_type = struct.unpack('<i', body_data[4:8])[0]
-                  payload = body_data[8:].rstrip(b'\x00').decode('utf-8', errors='replace')
-                  return (req_id, pkt_type, payload)
-              except: return None
-          def rcon_login(sock, password):
-              body = password.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', 1, 3) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              for _ in range(2):
-                  pkt = rcon_read_packet(sock)
-                  if pkt is None: break
-                  req_id, pkt_type, _ = pkt
-                  if pkt_type == 2: return req_id == 1
-              return False
-          def rcon_send(sock, cmd, req_id=2):
-              body = cmd.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', req_id, 2) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              pkt = rcon_read_packet(sock)
-              if pkt is None: return ''
-              _, _, payload = pkt
-              return payload
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.settimeout(10)
-          sock.connect(('127.0.0.1', 25575))
-          if rcon_login(sock, 'test'):
-              resp = rcon_send(sock, 'op TestBot')
-              print(f'op TestBot: {repr(resp)}')
-          else:
-              print('WARNING: RCON login failed')
-          sock.close()
-          "
-      - name: Install mineflayer and run tests
-        run: |
-          MC_VERSION="1.20.1" node -e "
-          const fs = require('fs');
-          let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, \"const MC_VERSION = '1.20.1';\");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper 1.20.1 (native)');
-          fs.writeFileSync('mineflayer_test_patched.js', test);
-          "
-          npm install mineflayer
-          node mineflayer_test_patched.js 2>&1 | tee mineflayer-output.log
-          TEST_EXIT=${PIPESTATUS[0]}
-          echo "Mineflayer test exit code: $TEST_EXIT"
-          exit $TEST_EXIT
-      - name: Upload test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mineflayer-output-1.20.1
-          path: mineflayer-output.log
-          retention-days: 7
-      - name: Dump server exceptions
-        if: always()
-        run: |
-          if [ -f logs/latest.log ]; then
-            echo "=== Server exceptions ==="
-            grep -iE "exception|error.*coinop|severe" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART\|io_uring\|Loading libraries\|com.destroystokyo" | head -30 || echo "No relevant exceptions found"
-          fi
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -n "$SERVER_PID" ]; then
-            kill $SERVER_PID 2>/dev/null || true
-            wait $SERVER_PID 2>/dev/null || true
-          fi
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-log-1.20.1
-          path: logs/latest.log
-          retention-days: 7
-
-  test-1-20-4:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Download CoinOp 1.20.4
-        uses: actions/download-artifact@v4
-        with:
-          name: coinop-1.20.4
-          path: plugins
-      - name: Download Paper 1.20.4
-        run: |
-          curl -sL "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/421/downloads/paper-1.20.4-421.jar" -o paper.jar
-          ls -lh paper.jar
-          if [ ! -s paper.jar ]; then echo "FAIL: paper.jar empty"; exit 1; fi
-      - name: Download Vault
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Configure and start server
-        run: |
-          echo "eula=true" > eula.txt
-          cat > server.properties << 'PROPS'
-          online-mode=false
-          server-port=25565
-          max-players=10
-          gamemode=survival
-          difficulty=peaceful
-          enable-rcon=true
-          rcon.port=25575
-          rcon.password=test
-          PROPS
-          java -Xmx2G -jar paper.jar --nogui &
-          SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          for i in $(seq 1 120); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started successfully!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: Server did not start within 4 minutes"
-            cat logs/latest.log 2>/dev/null | tail -50 || true
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-      - name: Op bot via RCON
-        run: |
-          sleep 3
-          python3 -c "
-          import socket, struct
-          def rcon_read_packet(sock):
-              try:
-                  raw = b''
-                  while len(raw) < 4:
-                      chunk = sock.recv(4 - len(raw))
-                      if not chunk: return None
-                      raw += chunk
-                  length = struct.unpack('<i', raw[:4])[0]
-                  if length < 8 or length > 4096: return None
-                  body_data = b''
-                  remaining = length
-                  while remaining > 0:
-                      chunk = sock.recv(min(remaining, 4096))
-                      if not chunk: return None
-                      body_data += chunk
-                      remaining -= len(chunk)
-                  if len(body_data) < 8: return None
-                  req_id = struct.unpack('<i', body_data[:4])[0]
-                  pkt_type = struct.unpack('<i', body_data[4:8])[0]
-                  payload = body_data[8:].rstrip(b'\x00').decode('utf-8', errors='replace')
-                  return (req_id, pkt_type, payload)
-              except: return None
-          def rcon_login(sock, password):
-              body = password.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', 1, 3) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              for _ in range(2):
-                  pkt = rcon_read_packet(sock)
-                  if pkt is None: break
-                  req_id, pkt_type, _ = pkt
-                  if pkt_type == 2: return req_id == 1
-              return False
-          def rcon_send(sock, cmd, req_id=2):
-              body = cmd.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', req_id, 2) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              pkt = rcon_read_packet(sock)
-              if pkt is None: return ''
-              _, _, payload = pkt
-              return payload
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.settimeout(10)
-          sock.connect(('127.0.0.1', 25575))
-          if rcon_login(sock, 'test'):
-              resp = rcon_send(sock, 'op TestBot')
-              print(f'op TestBot: {repr(resp)}')
-          else:
-              print('WARNING: RCON login failed')
-          sock.close()
-          "
+          RCON
       - name: Install mineflayer and run tests
         run: |
           node -e "
           const fs = require('fs');
           let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, \"const MC_VERSION = '1.20.4';\");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper 1.20.4 (native)');
+          test = test.replace(/const MC_VERSION = '1.21.11';/, "const MC_VERSION = '${{ matrix.mc_version }}';");
+          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} (native)');
           fs.writeFileSync('mineflayer_test_patched.js', test);
           "
           npm install mineflayer
@@ -501,7 +222,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mineflayer-output-1.20.4
+          name: mineflayer-output-${{ matrix.mc_version }}
           path: mineflayer-output.log
           retention-days: 7
       - name: Dump server exceptions
@@ -522,319 +243,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: server-log-1.20.4
+          name: server-log-${{ matrix.mc_version }}
           path: logs/latest.log
           retention-days: 7
-
-  test-1-20-6:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Download CoinOp 1.20.6
-        uses: actions/download-artifact@v4
-        with:
-          name: coinop-1.20.6
-          path: plugins
-      - name: Download Paper 1.20.6
-        run: |
-          curl -sL "https://api.papermc.io/v2/projects/paper/versions/1.20.6/builds/324/downloads/paper-1.20.6-324.jar" -o paper.jar
-          ls -lh paper.jar
-          if [ ! -s paper.jar ]; then echo "FAIL: paper.jar empty"; exit 1; fi
-      - name: Download Vault
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Configure and start server
-        run: |
-          echo "eula=true" > eula.txt
-          cat > server.properties << 'PROPS'
-          online-mode=false
-          server-port=25565
-          max-players=10
-          gamemode=survival
-          difficulty=peaceful
-          enable-rcon=true
-          rcon.port=25575
-          rcon.password=test
-          PROPS
-          java -Xmx2G -jar paper.jar --nogui &
-          SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          for i in $(seq 1 120); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started successfully!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: Server did not start within 4 minutes"
-            cat logs/latest.log 2>/dev/null | tail -50 || true
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-      - name: Op bot via RCON
-        run: |
-          sleep 3
-          python3 -c "
-          import socket, struct
-          def rcon_read_packet(sock):
-              try:
-                  raw = b''
-                  while len(raw) < 4:
-                      chunk = sock.recv(4 - len(raw))
-                      if not chunk: return None
-                      raw += chunk
-                  length = struct.unpack('<i', raw[:4])[0]
-                  if length < 8 or length > 4096: return None
-                  body_data = b''
-                  remaining = length
-                  while remaining > 0:
-                      chunk = sock.recv(min(remaining, 4096))
-                      if not chunk: return None
-                      body_data += chunk
-                      remaining -= len(chunk)
-                  if len(body_data) < 8: return None
-                  req_id = struct.unpack('<i', body_data[:4])[0]
-                  pkt_type = struct.unpack('<i', body_data[4:8])[0]
-                  payload = body_data[8:].rstrip(b'\x00').decode('utf-8', errors='replace')
-                  return (req_id, pkt_type, payload)
-              except: return None
-          def rcon_login(sock, password):
-              body = password.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', 1, 3) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              for _ in range(2):
-                  pkt = rcon_read_packet(sock)
-                  if pkt is None: break
-                  req_id, pkt_type, _ = pkt
-                  if pkt_type == 2: return req_id == 1
-              return False
-          def rcon_send(sock, cmd, req_id=2):
-              body = cmd.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', req_id, 2) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              pkt = rcon_read_packet(sock)
-              if pkt is None: return ''
-              _, _, payload = pkt
-              return payload
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.settimeout(10)
-          sock.connect(('127.0.0.1', 25575))
-          if rcon_login(sock, 'test'):
-              resp = rcon_send(sock, 'op TestBot')
-              print(f'op TestBot: {repr(resp)}')
-          else:
-              print('WARNING: RCON login failed')
-          sock.close()
-          "
-      - name: Install mineflayer and run tests
-        run: |
-          node -e "
-          const fs = require('fs');
-          let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, \"const MC_VERSION = '1.20.6';\");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper 1.20.6 (native)');
-          fs.writeFileSync('mineflayer_test_patched.js', test);
-          "
-          npm install mineflayer
-          node mineflayer_test_patched.js 2>&1 | tee mineflayer-output.log
-          TEST_EXIT=${PIPESTATUS[0]}
-          echo "Mineflayer test exit code: $TEST_EXIT"
-          exit $TEST_EXIT
-      - name: Upload test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mineflayer-output-1.20.6
-          path: mineflayer-output.log
-          retention-days: 7
-      - name: Dump server exceptions
-        if: always()
-        run: |
-          if [ -f logs/latest.log ]; then
-            echo "=== Server exceptions ==="
-            grep -iE "exception|error.*coinop|severe" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART\|io_uring\|Loading libraries\|com.destroystokyo" | head -30 || echo "No relevant exceptions found"
-          fi
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -n "$SERVER_PID" ]; then
-            kill $SERVER_PID 2>/dev/null || true
-            wait $SERVER_PID 2>/dev/null || true
-          fi
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-log-1.20.6
-          path: logs/latest.log
-          retention-days: 7
-
-  test-1-21:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Download CoinOp 1.21
-        uses: actions/download-artifact@v4
-        with:
-          name: coinop-1.21
-          path: plugins
-      - name: Download Paper 1.21
-        run: |
-          curl -sL "https://api.papermc.io/v2/projects/paper/versions/1.21/builds/142/downloads/paper-1.21-142.jar" -o paper.jar
-          ls -lh paper.jar
-          if [ ! -s paper.jar ]; then echo "FAIL: paper.jar empty"; exit 1; fi
-      - name: Download Vault
-        run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Configure and start server
-        run: |
-          echo "eula=true" > eula.txt
-          cat > server.properties << 'PROPS'
-          online-mode=false
-          server-port=25565
-          max-players=10
-          gamemode=survival
-          difficulty=peaceful
-          enable-rcon=true
-          rcon.port=25575
-          rcon.password=test
-          PROPS
-          java -Xmx2G -jar paper.jar --nogui &
-          SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          for i in $(seq 1 120); do
-            if grep -q "Done (" logs/latest.log 2>/dev/null; then
-              echo "Server started successfully!"
-              break
-            fi
-            sleep 2
-          done
-          if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: Server did not start within 4 minutes"
-            cat logs/latest.log 2>/dev/null | tail -50 || true
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
-      - name: Op bot via RCON
-        run: |
-          sleep 3
-          python3 -c "
-          import socket, struct
-          def rcon_read_packet(sock):
-              try:
-                  raw = b''
-                  while len(raw) < 4:
-                      chunk = sock.recv(4 - len(raw))
-                      if not chunk: return None
-                      raw += chunk
-                  length = struct.unpack('<i', raw[:4])[0]
-                  if length < 8 or length > 4096: return None
-                  body_data = b''
-                  remaining = length
-                  while remaining > 0:
-                      chunk = sock.recv(min(remaining, 4096))
-                      if not chunk: return None
-                      body_data += chunk
-                      remaining -= len(chunk)
-                  if len(body_data) < 8: return None
-                  req_id = struct.unpack('<i', body_data[:4])[0]
-                  pkt_type = struct.unpack('<i', body_data[4:8])[0]
-                  payload = body_data[8:].rstrip(b'\x00').decode('utf-8', errors='replace')
-                  return (req_id, pkt_type, payload)
-              except: return None
-          def rcon_login(sock, password):
-              body = password.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', 1, 3) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              for _ in range(2):
-                  pkt = rcon_read_packet(sock)
-                  if pkt is None: break
-                  req_id, pkt_type, _ = pkt
-                  if pkt_type == 2: return req_id == 1
-              return False
-          def rcon_send(sock, cmd, req_id=2):
-              body = cmd.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', req_id, 2) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              pkt = rcon_read_packet(sock)
-              if pkt is None: return ''
-              _, _, payload = pkt
-              return payload
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.settimeout(10)
-          sock.connect(('127.0.0.1', 25575))
-          if rcon_login(sock, 'test'):
-              resp = rcon_send(sock, 'op TestBot')
-              print(f'op TestBot: {repr(resp)}')
-          else:
-              print('WARNING: RCON login failed')
-          sock.close()
-          "
-      - name: Install mineflayer and run tests
-        run: |
-          node -e "
-          const fs = require('fs');
-          let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, \"const MC_VERSION = '1.21';\");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper 1.21 (native)');
-          fs.writeFileSync('mineflayer_test_patched.js', test);
-          "
-          npm install mineflayer
-          node mineflayer_test_patched.js 2>&1 | tee mineflayer-output.log
-          TEST_EXIT=${PIPESTATUS[0]}
-          echo "Mineflayer test exit code: $TEST_EXIT"
-          exit $TEST_EXIT
-      - name: Upload test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mineflayer-output-1.21
-          path: mineflayer-output.log
-          retention-days: 7
-      - name: Dump server exceptions
-        if: always()
-        run: |
-          if [ -f logs/latest.log ]; then
-            echo "=== Server exceptions ==="
-            grep -iE "exception|error.*coinop|severe" logs/latest.log | grep -vi "vault\|registration attempt\|PLEASE RESTART\|io_uring\|Loading libraries\|com.destroystokyo" | head -30 || echo "No relevant exceptions found"
-          fi
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -n "$SERVER_PID" ]; then
-            kill $SERVER_PID 2>/dev/null || true
-            wait $SERVER_PID 2>/dev/null || true
-          fi
-      - name: Upload server log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-log-1.21
-          path: logs/latest.log
-          retention-days: 7
-
