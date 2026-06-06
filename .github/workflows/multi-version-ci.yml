@@ -69,34 +69,28 @@ jobs:
         include:
           - mc_version: "1.19.4"
             java_version: "17"
-            paper_build: "550"
             artifact_name: "coinop-1.19.4"
-            needs_via: false
+            needs_via: "false"
           - mc_version: "1.20.1"
             java_version: "17"
-            paper_build: "196"
             artifact_name: "coinop-1.20.1"
-            needs_via: false
+            needs_via: "false"
           - mc_version: "1.20.4"
             java_version: "17"
-            paper_build: "421"
             artifact_name: "coinop-1.20.4"
-            needs_via: false
+            needs_via: "false"
           - mc_version: "1.20.6"
             java_version: "21"
-            paper_build: "324"
             artifact_name: "coinop-1.20.6"
-            needs_via: true
+            needs_via: "true"
           - mc_version: "1.21"
             java_version: "21"
-            paper_build: "142"
             artifact_name: "coinop-1.21"
-            needs_via: true
+            needs_via: "true"
           - mc_version: "1.21.1"
             java_version: "21"
-            paper_build: "120"
             artifact_name: "coinop-1.21.11"
-            needs_via: true
+            needs_via: "true"
     name: "Test MC ${{ matrix.mc_version }}"
     steps:
       - uses: actions/checkout@v4
@@ -122,20 +116,19 @@ jobs:
           import sys, json
           data = json.load(sys.stdin)
           builds = data.get('builds', [])
-          # Filter to release builds only
           release_builds = [b for b in builds if b.get('channel') == 'default']
           if not release_builds:
               release_builds = builds
           latest = release_builds[-1]
           build_num = latest['build']
           downloads = latest.get('downloads', {}).get('application', {})
-          filename = downloads.get('name', f'paper-${{ matrix.mc_version }}-{build_num}.jar')
-          print(f'{build_num}|{filename}')
+          filename = downloads.get('name', 'paper-${{ matrix.mc_version }}-' + str(build_num) + '.jar')
+          print(str(build_num) + '|' + filename)
           ")
           BUILD_NUM=$(echo "$LATEST_BUILD" | cut -d'|' -f1)
           FILENAME=$(echo "$LATEST_BUILD" | cut -d'|' -f2)
           PAPER_URL="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds/${BUILD_NUM}/downloads/${FILENAME}"
-          echo "Downloading Paper ${{ matrix.mc_version }} build ${BUILD_NUM}: ${PAPER_URL}"
+          echo "Downloading Paper ${{ matrix.mc_version }} build ${BUILD_NUM}"
           curl -sLf "$PAPER_URL" -o paper.jar
           ls -lh paper.jar
           if [ ! -s paper.jar ]; then
@@ -144,24 +137,23 @@ jobs:
           fi
       - name: Download Vault
         run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
-      - name: Download ViaVersion (if needed)
-        if: matrix.needs_via
+      - name: Download ViaVersion
+        if: matrix.needs_via == 'true'
         run: |
           curl -sL "${{ env.VIAVERSION_URL }}" -o plugins/ViaVersion.jar || true
           curl -sL "${{ env.VIABACKWARDS_URL }}" -o plugins/ViaBackwards.jar || true
       - name: Configure and start server
         run: |
           echo "eula=true" > eula.txt
-          cat > server.properties << 'PROPS'
-          online-mode=false
-          server-port=25565
-          max-players=10
-          gamemode=survival
-          difficulty=peaceful
-          enable-rcon=true
-          rcon.port=25575
-          rcon.password=test
-          PROPS
+          printf 'online-mode=false
+server-port=25565
+max-players=10
+gamemode=survival
+difficulty=peaceful
+enable-rcon=true
+rcon.port=25575
+rcon.password=test
+' > server.properties
           java -Xmx2G -jar paper.jar --nogui &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
@@ -181,67 +173,20 @@ jobs:
       - name: Op bot via RCON
         run: |
           sleep 5
-          python3 << 'RCON'
-          import socket, struct
-          def rcon_read_packet(sock):
-              try:
-                  raw = b''
-                  while len(raw) < 4:
-                      chunk = sock.recv(4 - len(raw))
-                      if not chunk: return None
-                      raw += chunk
-                  length = struct.unpack('<i', raw[:4])[0]
-                  if length < 8 or length > 4096: return None
-                  body_data = b''
-                  remaining = length
-                  while remaining > 0:
-                      chunk = sock.recv(min(remaining, 4096))
-                      if not chunk: return None
-                      body_data += chunk
-                      remaining -= len(chunk)
-                  if len(body_data) < 8: return None
-                  req_id = struct.unpack('<i', body_data[:4])[0]
-                  pkt_type = struct.unpack('<i', body_data[4:8])[0]
-                  payload = body_data[8:].rstrip(b'\x00').decode('utf-8', errors='replace')
-                  return (req_id, pkt_type, payload)
-              except: return None
-          def rcon_login(sock, password):
-              body = password.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', 1, 3) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              for _ in range(2):
-                  pkt = rcon_read_packet(sock)
-                  if pkt is None: break
-                  req_id, pkt_type, _ = pkt
-                  if pkt_type == 2: return req_id == 1
-              return False
-          def rcon_send(sock, cmd, req_id=2):
-              body = cmd.encode('utf-8') + b'\x00'
-              data = struct.pack('<ii', req_id, 2) + body + b'\x00'
-              packet = struct.pack('<i', len(data)) + data
-              sock.sendall(packet)
-              pkt = rcon_read_packet(sock)
-              if pkt is None: return ''
-              _, _, payload = pkt
-              return payload
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.settimeout(10)
-          sock.connect(('127.0.0.1', 25575))
-          if rcon_login(sock, 'test'):
-              resp = rcon_send(sock, 'op TestBot')
-              print(f'op TestBot: {repr(resp)}')
-          else:
-              print('WARNING: RCON login failed')
-          sock.close()
-          RCON
+          python3 ci/rcon_helper.py 127.0.0.1 25575 test "op TestBot"
       - name: Install mineflayer and run tests
+        env:
+          MC_VERSION: "${{ matrix.mc_version }}"
+          NEEDS_VIA: "${{ matrix.needs_via }}"
         run: |
           node -e "
           const fs = require('fs');
           let test = fs.readFileSync('mineflayer_test.js', 'utf8');
-          test = test.replace(/const MC_VERSION = '1.21.11';/, "const MC_VERSION = '${{ matrix.mc_version }}';");
-          ${{ matrix.needs_via && "test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} / ViaVersion');" || "test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} (native)');" }}
+          test = test.replace(/const MC_VERSION = '1.21.11';/, 'const MC_VERSION = \'' + process.env.MC_VERSION + '\';');
+          const viaLabel = process.env.NEEDS_VIA === 'true'
+            ? 'Paper ' + process.env.MC_VERSION + ' / ViaVersion'
+            : 'Paper ' + process.env.MC_VERSION + ' (native)';
+          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, viaLabel);
           fs.writeFileSync('mineflayer_test_patched.js', test);
           "
           npm install mineflayer
