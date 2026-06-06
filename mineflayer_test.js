@@ -165,6 +165,7 @@ function getFilledSlots() {
       filled.push({ slot: i, name: slot.name, count: slot.count || 1, item: slot });
     }
   }
+  console.log(, filled.map(s => s.name + '@' + s.slot).join(', '));
   return filled;
 }
 
@@ -202,15 +203,50 @@ async function navigateToCommodityView() {
   if (!win) return false;
 
   const mainSlots = getFilledSlots();
+  console.log("  nav: main menu items:", mainSlots.map(function(s) { return s.name + "@" + s.slot; }).join(", "));
+  
   const catSlot = findCategorySlot(mainSlots);
   if (!catSlot) {
     console.log('  nav: no category icon found in main menu');
+    console.log("  nav: checking for any non-utility item as fallback...");
+    // Fallback: find any non-utility, non-arrow item
+    const fallback = mainSlots.find(s => !isUtilityIcon(s.name) && s.name !== 'arrow');
+    if (fallback) {
+      console.log("  nav: using fallback category:", fallback.name, "@", fallback.slot);
+      // Use this as category
+      await clickSlot(fallback.slot, 0, false);
+      await sleep(1500);
+      const catWin = getGUIWindow();
+      if (!catWin) {
+        console.log('  nav: category window not open');
+        await closeGUI();
+        return false;
+      }
+      const catSlots = getFilledSlots();
+      console.log("  nav: category view items:", catSlots.map(function(s) { return s.name + "@" + s.slot; }).join(", "));
+      const commSlot = findCommoditySlot(catSlots);
+      if (!commSlot) {
+        console.log('  nav: no commodity in category view');
+        await closeGUI();
+        return false;
+      }
+      console.log(`  nav: clicking commodity ${commSlot.name} at slot ${commSlot.slot}`);
+      await clickSlot(commSlot.slot, 0, false);
+      await sleep(1500);
+      const commWin = getGUIWindow();
+      if (!commWin) {
+        console.log('  nav: commodity window not open');
+        await closeGUI();
+        return false;
+      }
+      return true;
+    }
     await closeGUI();
     return false;
   }
 
   // Click category
-  console.log(`  nav: clicking category ${catSlot.name} at slot ${catSlot.slot}`);
+  console.log("  nav: clicking category " + catSlot.name + " at slot " + catSlot.slot);
   await clickSlot(catSlot.slot, 0, false);
   await sleep(1500);
 
@@ -222,6 +258,7 @@ async function navigateToCommodityView() {
   }
 
   const catSlots = getFilledSlots();
+  console.log("  nav: category view items:", catSlots.map(function(s) { return s.name + "@" + s.slot; }).join(", "));
   const commSlot = findCommoditySlot(catSlots);
   if (!commSlot) {
     console.log('  nav: no commodity in category view');
@@ -230,7 +267,7 @@ async function navigateToCommodityView() {
   }
 
   // Click commodity
-  console.log(`  nav: clicking commodity ${commSlot.name} at slot ${commSlot.slot}`);
+  console.log("  nav: clicking commodity " + commSlot.name + " at slot " + commSlot.slot);
   await clickSlot(commSlot.slot, 0, false);
   await sleep(1500);
 
