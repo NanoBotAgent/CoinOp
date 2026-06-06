@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.coinop'
-version = '1.0.0-SNAPSHOT'
+version = '1.20.1-1.0.0-SNAPSHOT'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -22,27 +22,26 @@ repositories {
 dependencies {
     // Paper API 1.20.1
     compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT'
-    compileOnly 'com.github.MilkBowl:VaultAPI:1.7'
-    
-    implementation 'redis.clients:jedis:5.1.0'
-    implementation 'com.zaxxer:HikariCP:5.1.0'
-    implementation 'com.mysql:mysql-connector-j:8.3.0'
-    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
-    implementation 'com.google.code.gson:gson:2.10.1'
+    // VaultAPI (bukkit excluded to avoid conflict with Paper)
+    compileOnly('com.github.MilkBowl:VaultAPI:1.7') {
+        exclude group: 'org.bukkit', module: 'bukkit'
+    }
 }
 
 sourceSets {
     main {
         java {
-            srcDirs = [
-                '../../src/main/java',
-                'src/main/java'
-            ]
+            srcDirs = [ '../../src/main/java', 'src/main/java' ]
         }
         resources {
             srcDirs = ['../../src/main/resources']
         }
     }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.release = 17
 }
 
 processResources {
@@ -55,11 +54,16 @@ tasks.build {
 }
 
 shadowJar {
-    relocate 'redis.clients', 'com.coinop.lib.jedis'
-    relocate 'com.zaxxer.hikari', 'com.coinop.lib.hikari'
     archiveBaseName.set('coinop-plugin-1.20.1')
     archiveClassifier.set('')
-    minimize()
+    archiveVersion.set('1.0.0-SNAPSHOT')
+    // Relocate dependencies to avoid conflicts
+    relocate 'redis.clients', 'com.coinop.lib.jedis'
+    relocate 'com.zaxxer.hikari', 'com.coinop.lib.hikari'
+    relocate 'com.mysql', 'com.coinop.lib.mysql'
+    relocate 'org.sqlite', 'com.coinop.lib.sqlite'
+    relocate 'com.google.gson', 'com.coinop.lib.gson'
+    // Do NOT minimize - strips SQLite JDBC native .so libraries
 }
 
 tasks.jar {
