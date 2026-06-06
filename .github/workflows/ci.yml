@@ -40,7 +40,7 @@ jobs:
      uses: actions/upload-artifact@v4
      with:
        name: CoinOp
-       path: versions/*/build/libs/*.jar
+       path: versions/1.21.11/build/libs/*.jar
      if: always()
 
  smoke-test:
@@ -61,7 +61,7 @@ jobs:
    - name: Prepare plugin
      run: |
        mkdir -p plugins
-       cp versions/*/build/libs/*.jar plugins/
+       cp versions/1.21.11/build/libs/*.jar plugins/
        ls -lh plugins/
    - name: Download Vault (softdep)
      run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
@@ -140,7 +140,7 @@ jobs:
    - name: Prepare plugin
      run: |
        mkdir -p plugins
-       cp versions/*/build/libs/*.jar plugins/
+       cp versions/1.21.11/build/libs/*.jar plugins/
    - name: Download Vault
      run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
    - name: Download Paper
