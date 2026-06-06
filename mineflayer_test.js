@@ -165,12 +165,12 @@ function getFilledSlots() {
       filled.push({ slot: i, name: slot.name, count: slot.count || 1, item: slot });
     }
   }
-  console.log(, filled.map(s => s.name + '@' + s.slot).join(', '));
+  console.log("  DEBUG: getFilledSlots found " + filled.length + " items:", filled.map(function(s) { return s.name + "@" + s.slot; }).join(", "));
   return filled;
 }
 
 function findCategorySlot(filledSlots) {
-  return filledSlots.find(s => isCategoryIcon(s.name));
+  return filledSlots.find(function(s) { return isCategoryIcon(s.name); });
 }
 
 function findCommoditySlot(filledSlots) {
@@ -608,7 +608,7 @@ async function testGUIMainMenu() {
   check(filledSlots.length > 0, 'Main menu has non-empty slots');
 
   // Verify at least one category icon exists (diamond/wheat/blaze_rod/cobblestone)
-  const hasCategory = filledSlots.some(s => isCategoryIcon(s.name));
+  const hasCategory = filledSlots.some(function(s) { return isCategoryIcon(s.name); });
   check(hasCategory, 'Main menu has category icons (diamond/wheat/blaze_rod/cobblestone)');
 
   // Verify "Your Orders" button exists (WRITABLE_BOOK)
