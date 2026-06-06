@@ -60,7 +60,7 @@ public class CoinOpAdminCommand implements CommandExecutor, TabCompleter {
             case "sync":
                 return handleSync(sender, args);
             default:
-                sendAdminHelp(sender);
+                sender.sendMessage(ChatColor.RED + "Unknown subcommand. Use /coinadmin help");
                 return true;
         }
     }
