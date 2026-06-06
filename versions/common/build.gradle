@@ -19,9 +19,6 @@ repositories {
 
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT'
-    compileOnly('com.github.MilkBowl:VaultAPI:1.7') {
-        exclude group: 'org.bukkit', module: 'bukkit'
-    }
 }
 
 // Don't create a JAR for common - it's just source code
