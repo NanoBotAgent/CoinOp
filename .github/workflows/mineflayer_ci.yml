@@ -30,12 +30,20 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
     - name: Build with Gradle
-      run: ./gradlew shadowJar --no-daemon --stacktrace
+      run: ./gradlew shadowJar --no-daemon --stacktrace --info 2>&1 | tee gradle-build.log
+    - name: Upload build log
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-build-log
+        path: gradle-build.log
+        retention-days: 7
+      if: always()
     - name: Upload JAR
       uses: actions/upload-artifact@v4
       with:
         name: CoinOp
         path: versions/1.21.11/build/libs/*.jar
+      if: always()
 
   mineflayer-test:
     runs-on: ubuntu-latest
