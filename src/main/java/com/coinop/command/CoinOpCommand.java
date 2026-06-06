@@ -46,7 +46,7 @@ public class CoinOpCommand implements CommandExecutor, TabCompleter {
             case "coininstant":
                 return handleInstantDirect(sender, args);
             case "coinorders":
-                return handleOrders(sender, new String[0]);
+            String[] ordersArgs = new String[args.length + 1]; ordersArgs[0] = "orders"; System.arraycopy(args, 0, ordersArgs, 1, args.length); return handleOrders(sender, ordersArgs);
             case "coinprice":
                 return handlePrice(sender, args);
             case "coinhistory":
