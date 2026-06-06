@@ -22,10 +22,6 @@ repositories {
 dependencies {
     // Paper API 1.19.4
     compileOnly 'io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT'
-    // VaultAPI (bukkit excluded to avoid conflict with Paper)
-    compileOnly('com.github.MilkBowl:VaultAPI:1.7') {
-        exclude group: 'org.bukkit', module: 'bukkit'
-    }
 }
 
 sourceSets {
@@ -57,12 +53,6 @@ shadowJar {
     archiveBaseName.set('coinop-plugin-1.19.4')
     archiveClassifier.set('')
     archiveVersion.set('1.0.0-SNAPSHOT')
-    // Relocate dependencies to avoid conflicts
-    relocate 'redis.clients', 'com.coinop.lib.jedis'
-    relocate 'com.zaxxer.hikari', 'com.coinop.lib.hikari'
-    relocate 'com.mysql', 'com.coinop.lib.mysql'
-    relocate 'org.sqlite', 'com.coinop.lib.sqlite'
-    relocate 'com.google.gson', 'com.coinop.lib.gson'
     // Do NOT minimize - strips SQLite JDBC native .so libraries
 }
 
