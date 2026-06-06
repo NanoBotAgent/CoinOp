@@ -30,7 +30,7 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
     - name: Build with Gradle
-      run: ./gradlew :v1_21_11:shadowJar --no-daemon --stacktrace
+      run: ./gradlew shadowJar --no-daemon --stacktrace
     - name: Upload JAR
       uses: actions/upload-artifact@v4
       with:
