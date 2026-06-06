@@ -30,7 +30,7 @@ sourceSets {
             srcDirs = [ '../../src/main/java', 'src/main/java' ]
         }
         resources {
-            srcDirs = ['../../src/main/resources']
+            srcDirs = [ 'src/main/resources', '../../src/main/resources' ]
         }
     }
 }
