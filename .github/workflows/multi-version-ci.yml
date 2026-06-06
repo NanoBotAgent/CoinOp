@@ -11,6 +11,8 @@ permissions:
 
 env:
   VAULT_URL: "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
+  VIAVERSION_URL: "https://cdn.modrinth.com/data/P1OZGk5p/versions/6LC4R0sP/ViaVersion-5.9.2-SNAPSHOT.jar"
+  VIABACKWARDS_URL: "https://cdn.modrinth.com/data/NpvuJQoq/versions/Og77hOkC/ViaBackwards-5.9.2-SNAPSHOT.jar"
 
 jobs:
   build:
@@ -68,28 +70,33 @@ jobs:
           - mc_version: "1.19.4"
             java_version: "17"
             paper_build: "550"
-            paper_sha: "c2710c726e5ff2b6f7fa9f0b3b3a0a1e2d3f4a5b"
             artifact_name: "coinop-1.19.4"
+            needs_via: false
           - mc_version: "1.20.1"
             java_version: "17"
             paper_build: "196"
             artifact_name: "coinop-1.20.1"
+            needs_via: false
           - mc_version: "1.20.4"
             java_version: "17"
             paper_build: "421"
             artifact_name: "coinop-1.20.4"
+            needs_via: false
           - mc_version: "1.20.6"
             java_version: "21"
             paper_build: "324"
             artifact_name: "coinop-1.20.6"
+            needs_via: true
           - mc_version: "1.21"
             java_version: "21"
             paper_build: "142"
             artifact_name: "coinop-1.21"
+            needs_via: true
           - mc_version: "1.21.1"
             java_version: "21"
             paper_build: "120"
             artifact_name: "coinop-1.21.11"
+            needs_via: true
     name: "Test MC ${{ matrix.mc_version }}"
     steps:
       - uses: actions/checkout@v4
@@ -109,9 +116,27 @@ jobs:
           path: plugins
       - name: Download Paper ${{ matrix.mc_version }}
         run: |
-          PAPER_URL="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds/${{ matrix.paper_build }}/downloads/paper-${{ matrix.mc_version }}-${{ matrix.paper_build }}.jar"
-          echo "Downloading: $PAPER_URL"
-          curl -sLf "$PAPER_URL" -o paper.jar || curl -sLf "https://fill-data.papermc.io/v1/objects/${{ matrix.paper_sha }}/paper-${{ matrix.mc_version }}-${{ matrix.paper_build }}.jar" -o paper.jar
+          PAPER_API="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds"
+          echo "Fetching Paper builds from API..."
+          LATEST_BUILD=$(curl -sL "$PAPER_API" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          builds = data.get('builds', [])
+          # Filter to release builds only
+          release_builds = [b for b in builds if b.get('channel') == 'default']
+          if not release_builds:
+              release_builds = builds
+          latest = release_builds[-1]
+          build_num = latest['build']
+          downloads = latest.get('downloads', {}).get('application', {})
+          filename = downloads.get('name', f'paper-${{ matrix.mc_version }}-{build_num}.jar')
+          print(f'{build_num}|{filename}')
+          ")
+          BUILD_NUM=$(echo "$LATEST_BUILD" | cut -d'|' -f1)
+          FILENAME=$(echo "$LATEST_BUILD" | cut -d'|' -f2)
+          PAPER_URL="https://api.papermc.io/v2/projects/paper/versions/${{ matrix.mc_version }}/builds/${BUILD_NUM}/downloads/${FILENAME}"
+          echo "Downloading Paper ${{ matrix.mc_version }} build ${BUILD_NUM}: ${PAPER_URL}"
+          curl -sLf "$PAPER_URL" -o paper.jar
           ls -lh paper.jar
           if [ ! -s paper.jar ]; then
             echo "FAIL: paper.jar is empty or missing"
@@ -119,6 +144,11 @@ jobs:
           fi
       - name: Download Vault
         run: curl -sL "${{ env.VAULT_URL }}" -o plugins/Vault.jar || true
+      - name: Download ViaVersion (if needed)
+        if: matrix.needs_via
+        run: |
+          curl -sL "${{ env.VIAVERSION_URL }}" -o plugins/ViaVersion.jar || true
+          curl -sL "${{ env.VIABACKWARDS_URL }}" -o plugins/ViaBackwards.jar || true
       - name: Configure and start server
         run: |
           echo "eula=true" > eula.txt
@@ -135,7 +165,7 @@ jobs:
           java -Xmx2G -jar paper.jar --nogui &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          for i in $(seq 1 120); do
+          for i in $(seq 1 180); do
             if grep -q "Done (" logs/latest.log 2>/dev/null; then
               echo "Server started successfully!"
               break
@@ -143,14 +173,14 @@ jobs:
             sleep 2
           done
           if ! grep -q "Done (" logs/latest.log 2>/dev/null; then
-            echo "FAIL: Server did not start within 4 minutes"
+            echo "FAIL: Server did not start within 6 minutes"
             cat logs/latest.log 2>/dev/null | tail -50 || true
             kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi
       - name: Op bot via RCON
         run: |
-          sleep 3
+          sleep 5
           python3 << 'RCON'
           import socket, struct
           def rcon_read_packet(sock):
@@ -211,7 +241,7 @@ jobs:
           const fs = require('fs');
           let test = fs.readFileSync('mineflayer_test.js', 'utf8');
           test = test.replace(/const MC_VERSION = '1.21.11';/, "const MC_VERSION = '${{ matrix.mc_version }}';");
-          test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} (native)');
+          ${{ matrix.needs_via && "test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} / ViaVersion');" || "test = test.replace(/Paper 1.21.11 \/ ViaVersion/, 'Paper ${{ matrix.mc_version }} (native)');" }}
           fs.writeFileSync('mineflayer_test_patched.js', test);
           "
           npm install mineflayer
