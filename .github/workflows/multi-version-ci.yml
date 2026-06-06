@@ -145,7 +145,8 @@ jobs:
       - name: Configure and start server
         run: |
           echo "eula=true" > eula.txt
-          printf 'online-mode=false
+          cat > server.properties << 'SPROPS'
+online-mode=false
 server-port=25565
 max-players=10
 gamemode=survival
@@ -153,7 +154,7 @@ difficulty=peaceful
 enable-rcon=true
 rcon.port=25575
 rcon.password=test
-' > server.properties
+SPROPS
           java -Xmx2G -jar paper.jar --nogui &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
