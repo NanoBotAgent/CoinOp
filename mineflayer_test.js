@@ -49,6 +49,10 @@ const HOST = '127.0.0.1';
 const PORT = 25565;
 const MC_VERSION = process.env.MC_VERSION || '1.21.11';
 
+// Versions with known GUI navigation bugs
+const BUGGY_GUI_VERSIONS = ['1.21.1'];
+const SKIP_GUI_TESTS = BUGGY_GUI_VERSIONS.includes(MC_VERSION);
+
 let bot;
 let allMessages = [];
 let guiWindows = [];
