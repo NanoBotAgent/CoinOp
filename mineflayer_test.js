@@ -53,6 +53,9 @@ const MC_VERSION = process.env.MC_VERSION || '1.21.11';
 const BUGGY_GUI_VERSIONS = ['1.21.1'];
 const SKIP_GUI_TESTS = BUGGY_GUI_VERSIONS.includes(MC_VERSION);
 
+console.log("DEBUG: MC_VERSION = '" + MC_VERSION + "'");
+console.log("DEBUG: SKIP_GUI_TESTS = " + SKIP_GUI_TESTS);
+
 let bot;
 let allMessages = [];
 let guiWindows = [];
