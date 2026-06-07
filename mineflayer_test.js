@@ -848,12 +848,19 @@ async function testGUIOrdersView() {
 
   const mainSlots = getFilledSlots();
 
-  // Find "Your Orders" button (writable_book at bottom of main menu)
-  const ordersSlot = mainSlots.find(s => s.name === 'writable_book');
+  // Find "Your Orders" button (writable_book at bottom of main menu, slot >= 45 for size 54)
+  const ordersSlot = mainSlots.find(s => s.name === 'writable_book' && s.slot >= 45);
   if (!ordersSlot) {
-    check(false, 'Orders view: no Orders button found');
-    await closeGUI();
-    return;
+    // Fallback: any writable_book if not in bottom area
+    const fallbackSlot = mainSlots.find(s => s.name === 'writable_book');
+    if (fallbackSlot) {
+      console.log("  WARN: Orders button not in bottom area, using fallback at slot " + fallbackSlot.slot);
+    }
+    if (!fallbackSlot) {
+      check(false, 'Orders view: no Orders button found');
+      await closeGUI();
+      return;
+    }
   }
 
   console.log(`  Clicking Orders button at slot ${ordersSlot.slot}`);
